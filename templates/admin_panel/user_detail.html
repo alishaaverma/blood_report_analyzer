@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ target_user.username }}{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+            <h1>{{ target_user.username }}</h1>
+            <p>Email: {{ target_user.email }}</p>
+            {% if target_user.profile %}
+                <p>Phone: {{ target_user.profile.phone_number|default:"—" }} | Age: {{ target_user.profile.age|default:"—" }}</p>
+            {% endif %}
+            <p>Joined: {{ target_user.date_joined|date:"d M Y" }}</p>
+        </div>
+        <form method="post" action="{% url 'admin_panel:user_delete' target_user.id %}" onsubmit="return confirm('Delete this user and ALL their reports? This cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Delete User</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Reports ({{ reports.count }})</h2>
+    {% if reports %}
+    <table>
+        <thead><tr><th>Title</th><th>Status</th><th>Uploaded</th><th></th></tr></thead>
+        <tbody>
+        {% for r in reports %}
+            <tr>
+                <td>{{ r.title|default:"Untitled" }}</td>
+                <td><span class="status-badge status-{{ r.status }}">{{ r.status }}</span></td>
+                <td>{{ r.uploaded_at|date:"d M Y" }}</td>
+                <td>
+                    <form method="post" action="{% url 'admin_panel:delete_report' r.id %}" style="display:inline;" onsubmit="return confirm('Delete this report?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No reports uploaded by this user yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

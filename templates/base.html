@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Blood Report Analyzer{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{% url 'reports:dashboard' %}" class="brand">🩸 Blood Report Analyzer</a>
+        <div class="nav-links">
+            {% if user.is_authenticated %}
+                <a href="{% url 'reports:dashboard' %}">My Reports</a>
+                <a href="{% url 'reports:upload' %}">Upload Report</a>
+                <a href="{% url 'accounts:profile' %}">Profile</a>
+                {% if user.is_staff %}
+                    <a href="{% url 'admin_panel:dashboard' %}">Admin Panel</a>
+                {% endif %}
+                <form action="{% url 'accounts:logout' %}" method="post" class="inline-form">
+                    {% csrf_token %}
+                    <button type="submit" class="link-btn">Logout ({{ user.username }})</button>
+                </form>
+            {% else %}
+                <a href="{% url 'accounts:login' %}">Login</a>
+                <a href="{% url 'accounts:signup' %}">Sign Up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>⚠️ This tool provides general, educational health information only and is
+        <strong>not</strong> a substitute for professional medical advice, diagnosis, or
+        treatment. Always consult a licensed doctor.</p>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

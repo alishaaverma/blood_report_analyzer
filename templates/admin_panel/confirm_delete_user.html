@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto;">
+    <h1>Delete user "{{ target_user.username }}"?</h1>
+    <p>This will permanently delete the user account and all their uploaded reports. This cannot be undone.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="{% url 'admin_panel:user_detail' target_user.id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

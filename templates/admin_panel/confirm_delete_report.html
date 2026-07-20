@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto;">
+    <h1>Delete this report?</h1>
+    <p>"{{ report.title|default:"Untitled" }}" belonging to {{ report.user.username }} will be permanently deleted.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="{% url 'admin_panel:user_detail' report.user_id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

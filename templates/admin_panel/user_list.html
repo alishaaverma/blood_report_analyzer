@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}All Users{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>All Users</h1>
+    <form method="get" style="margin-bottom:16px;">
+        <input type="text" name="q" placeholder="Search by username or email" value="{{ query }}">
+    </form>
+    <table>
+        <thead><tr><th>Username</th><th>Email</th><th>Reports</th><th>Joined</th><th></th></tr></thead>
+        <tbody>
+        {% for u in users %}
+            <tr>
+                <td>{{ u.username }}</td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.reports.count }}</td>
+                <td>{{ u.date_joined|date:"d M Y" }}</td>
+                <td><a href="{% url 'admin_panel:user_detail' u.id %}" class="btn">View</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

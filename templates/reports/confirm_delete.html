@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Delete Report{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto;">
+    <h1>Delete this report?</h1>
+    <p>"{{ report.title|default:"Untitled Report" }}" uploaded on {{ report.uploaded_at|date:"d M Y" }} will be permanently deleted. This cannot be undone.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="{% url 'reports:detail' report.pk %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

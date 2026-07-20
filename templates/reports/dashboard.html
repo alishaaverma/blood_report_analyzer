@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}My Reports{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h1>My Reports</h1>
+        <a href="{% url 'reports:upload' %}" class="btn">+ Upload New Report</a>
+    </div>
+
+    {% if reports %}
+        {% for report in reports %}
+        <div class="report-list-item">
+            <div>
+                <strong>{{ report.title|default:"Untitled Report" }}</strong><br>
+                <span style="color:var(--text-light);font-size:0.85rem;">
+                    Uploaded {{ report.uploaded_at|date:"d M Y, H:i" }}
+                </span>
+            </div>
+            <div>
+                {% if report.status == 'normal' %}
+                    <span class="status-badge status-normal">All Normal</span>
+                {% elif report.status == 'abnormal' %}
+                    <span class="status-badge status-abnormal">Needs Attention</span>
+                {% else %}
+                    <span class="status-badge status-pending">Pending</span>
+                {% endif %}
+                <a href="{% url 'reports:detail' report.pk %}" class="btn" style="margin-left:10px;">View</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No reports uploaded yet. <a href="{% url 'reports:upload' %}">Upload your first report</a>.</p>
+    {% endif %}
+</div>
+{% endblock %}

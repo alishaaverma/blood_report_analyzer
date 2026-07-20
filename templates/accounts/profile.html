@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:0 auto;">
+    <h1>My Profile</h1>
+    <p><strong>Username:</strong> {{ user.username }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn">Save</button>
+    </form>
+
+    <hr>
+    <h3>Location</h3>
+    {% if profile.has_location %}
+        <p>✅ Location saved (used to find nearby hospitals/pharmacies).</p>
+    {% else %}
+        <p>⚠️ No location saved yet.</p>
+    {% endif %}
+    <button id="shareLocationBtn" class="btn btn-secondary">Share My Location</button>
+    <p id="locationStatus"></p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('shareLocationBtn').addEventListener('click', function () {
+    const status = document.getElementById('locationStatus');
+    if (!navigator.geolocation) {
+        status.textContent = 'Geolocation not supported by this browser.';
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+        fetch("{% url 'accounts:update_location' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
+            })
+        }).then(r => r.json()).then(data => {
+            status.textContent = data.status === 'ok' ? 'Location saved!' : 'Failed to save location.';
+        });
+    }, function () {
+        status.textContent = 'Permission denied or location unavailable.';
+    });
+});
+</script>
+{% endblock %}
