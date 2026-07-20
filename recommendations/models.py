@@ -23,8 +23,12 @@ class ConditionMapping(models.Model):
     condition_name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
 
-    diet_advice = models.TextField(blank=True)
-    exercise_advice = models.TextField(blank=True)
+    diet_advice = models.TextField(
+        help_text="Diet guidance specifically related to this condition."
+    )
+    exercise_advice = models.TextField(
+        help_text="Exercise guidance specifically related to this condition."
+    )
     common_medicines = models.TextField(
         blank=True,
         help_text="Comma-separated general medicine/category names for reference only.",
@@ -43,7 +47,14 @@ class ConditionMapping(models.Model):
         return f"{self.test_name} ({self.direction}) -> {self.condition_name}"
 
     def medicine_list(self):
-        return [m.strip() for m in self.common_medicines.split(",") if m.strip()]
+        medicines = [m.strip() for m in self.common_medicines.split(",") if m.strip()]
+        return [
+            medicine
+            for medicine in medicines
+            if not medicine.lower().startswith(
+                ("depends entirely", "no general medicine", "none")
+            )
+        ][:5]
 
 
 class GeneralRecommendation(models.Model):

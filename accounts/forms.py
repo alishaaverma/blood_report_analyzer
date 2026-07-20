@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import SetPasswordForm
 from django.contrib.auth.models import User
 
 from .models import UserProfile
@@ -41,3 +42,30 @@ class LocationUpdateForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ["last_latitude", "last_longitude"]
+
+
+class EmailOTPRequestForm(forms.Form):
+    email = forms.EmailField(
+        label="Account email",
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+
+
+class OTPVerificationForm(forms.Form):
+    code = forms.RegexField(
+        regex=r"^\d{6}$",
+        max_length=6,
+        label="6-digit OTP",
+        error_messages={"invalid": "Enter the 6-digit code from your email."},
+        widget=forms.TextInput(
+            attrs={
+                "autocomplete": "one-time-code",
+                "inputmode": "numeric",
+                "placeholder": "000000",
+            }
+        ),
+    )
+
+
+class OTPSetPasswordForm(SetPasswordForm):
+    pass

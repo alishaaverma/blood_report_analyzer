@@ -1,7 +1,9 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
-from .utils import find_nearby_places
+import requests
+
+from .utils import NearbySearchUnavailable, find_nearby_places
 
 
 @login_required
@@ -26,8 +28,31 @@ def nearby_places(request):
 
     try:
         lat, lng = float(lat), float(lng)
-    except ValueError:
+        radius_km = float(request.GET.get("radius_km", 10))
+    except (TypeError, ValueError):
         return JsonResponse({"error": "Invalid coordinates"}, status=400)
 
-    places = find_nearby_places(lat, lng, categories=categories)
-    return JsonResponse({"results": places})
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return JsonResponse({"error": "Invalid coordinates"}, status=400)
+    if not (1 <= radius_km <= 10):
+        return JsonResponse({"error": "Radius must be between 1 and 10 km."}, status=400)
+
+    try:
+        places = find_nearby_places(
+            lat, lng, radius_m=int(radius_km * 1000), categories=categories
+        )
+    except (requests.RequestException, NearbySearchUnavailable):
+        return JsonResponse(
+            {
+                "error": "The free OpenStreetMap search is temporarily unavailable. Please try again."
+            },
+            status=502,
+        )
+    return JsonResponse(
+        {
+            "results": places,
+            "latitude": lat,
+            "longitude": lng,
+            "radius_km": radius_km,
+        }
+    )

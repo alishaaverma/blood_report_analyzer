@@ -8,6 +8,9 @@
         {{ form.as_p }}
         <button type="submit" class="btn">Login</button>
     </form>
+    <p class="auth-help-link">
+        <a href="{% url 'accounts:forgot_password' %}">Forgot password?</a>
+    </p>
     <p>New here? <a href="{% url 'accounts:signup' %}">Create an account</a></p>
 </div>
 {% endblock %}

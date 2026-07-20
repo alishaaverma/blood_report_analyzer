@@ -158,3 +158,17 @@ per-lab parsing profiles.
   `DJANGO_ALLOWED_HOSTS`
 - Consider adding a Google Places API key (`GOOGLE_PLACES_API_KEY` in
   `.env`) for richer nearby-place results (ratings, opening hours)
+# Blood Report Analyzer
+
+## Start the development server
+
+Use the project launcher so Django always runs with the virtual environment
+that contains `pdfplumber` and the other dependencies:
+
+```powershell
+.\run_server.ps1
+```
+
+Do not use `python manage.py runserver` unless the project virtual environment
+is already activated. On Windows, `manage.py` will now automatically switch to
+the bundled virtual environment as an additional safeguard.

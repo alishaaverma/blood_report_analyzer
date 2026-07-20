@@ -6,6 +6,21 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _load_local_env(path):
+    """Load simple KEY=VALUE entries without overriding real environment variables."""
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+_load_local_env(BASE_DIR / ".env")
+
 # ---------------------------------------------------------------------------
 # SECURITY
 # ---------------------------------------------------------------------------
@@ -135,11 +150,61 @@ LOGIN_REDIRECT_URL = "reports:dashboard"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 # ---------------------------------------------------------------------------
+# EMAIL & PASSWORD OTP
+# ---------------------------------------------------------------------------
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+_configured_email_backend = os.environ.get("EMAIL_BACKEND", "auto")
+if _configured_email_backend == "auto":
+    EMAIL_BACKEND = (
+        "django.core.mail.backends.smtp.EmailBackend"
+        if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD
+        else "django.core.mail.backends.console.EmailBackend"
+    )
+else:
+    EMAIL_BACKEND = _configured_email_backend
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    EMAIL_HOST_USER or "noreply@bloodreportanalyzer.local",
+)
+PASSWORD_OTP_EXPIRY_MINUTES = int(
+    os.environ.get("PASSWORD_OTP_EXPIRY_MINUTES", "10")
+)
+
+# ---------------------------------------------------------------------------
 # THIRD-PARTY / EXTERNAL API KEYS
 # ---------------------------------------------------------------------------
 # Optional: Google Places API key for richer hospital/pharmacy search.
 # If not set, the app falls back to the free OpenStreetMap Overpass API.
 GOOGLE_PLACES_API_KEY = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+# "osm" uses free OpenStreetMap services and requires no API key.
+# Set to "google" only when Google Places (New) is configured.
+PLACES_PROVIDER = os.environ.get("PLACES_PROVIDER", "osm").lower()
+NOMINATIM_REVERSE_URL = os.environ.get(
+    "NOMINATIM_REVERSE_URL",
+    "https://nominatim.openstreetmap.org/reverse",
+)
+OVERPASS_API_URLS = [
+    url.strip()
+    for url in os.environ.get(
+        "OVERPASS_API_URLS",
+        (
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter,"
+            "https://overpass.private.coffee/api/interpreter,"
+            "https://overpass-api.de/api/interpreter,"
+            "https://lz4.overpass-api.de/api/interpreter,"
+            "https://overpass.kumi.systems/api/interpreter"
+        ),
+    ).split(",")
+    if url.strip()
+]
+GOOGLE_PLACES_NEARBY_URL = os.environ.get(
+    "GOOGLE_PLACES_NEARBY_URL",
+    "https://places.googleapis.com/v1/places:searchNearby",
+)
 
 # ---------------------------------------------------------------------------
 # FILE UPLOAD SECURITY
