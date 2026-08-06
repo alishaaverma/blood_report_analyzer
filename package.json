@@ -1,0 +1,28 @@
+{
+  "name": "blood-report-analyzer",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "next": "^16.3.0",
+    "nodemailer": "^9.0.4",
+    "pdfjs-dist": "^5.4.296",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.0",
+    "typescript": "^5.9.3"
+  }
+}
