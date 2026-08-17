@@ -8,3 +8,4 @@ out/
 .DS_Store
 storage/reports/*
 !storage/reports/.gitkeep
+storage/runtime-data.json

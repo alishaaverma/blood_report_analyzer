@@ -1,13 +1,17 @@
-import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import {
+  createHmac,
+  randomBytes,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { AUTH } from "@/lib/constants";
 import { readStore } from "@/lib/store";
 import type { User } from "@/lib/types";
 
 const scrypt = promisify(scryptCallback);
-const cookieName = "blood_report_session";
-const sessionLifetimeSeconds = 60 * 60 * 24 * 7;
 
 function sessionSecret() {
   return process.env.SESSION_SECRET || "development-only-change-this-secret";
@@ -32,10 +36,12 @@ function sign(payload: string) {
 }
 
 function encodeSession(userId: string) {
-  const payload = Buffer.from(JSON.stringify({
-    userId,
-    expiresAt: Date.now() + sessionLifetimeSeconds * 1000,
-  })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({
+      userId,
+      expiresAt: Date.now() + AUTH.sessionLifetimeSeconds * 1000,
+    }),
+  ).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 
@@ -44,7 +50,11 @@ function decodeSession(token?: string): { userId: string } | null {
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
   const expected = sign(payload);
-  if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  if (
+    signature.length !== expected.length ||
+    !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+  )
+    return null;
   try {
     const value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
       userId: string;
@@ -58,24 +68,28 @@ function decodeSession(token?: string): { userId: string } | null {
 
 export function sessionCookie(userId: string) {
   return {
-    name: cookieName,
+    name: AUTH.cookieName,
     value: encodeSession(userId),
     options: {
       httpOnly: true,
       sameSite: "lax" as const,
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: sessionLifetimeSeconds,
+      maxAge: AUTH.sessionLifetimeSeconds,
     },
   };
 }
 
 export function expiredSessionCookie() {
-  return { name: cookieName, value: "", options: { httpOnly: true, path: "/", maxAge: 0 } };
+  return {
+    name: AUTH.cookieName,
+    value: "",
+    options: { httpOnly: true, path: "/", maxAge: 0 },
+  };
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  const token = (await cookies()).get(cookieName)?.value;
+  const token = (await cookies()).get(AUTH.cookieName)?.value;
   const session = decodeSession(token);
   if (!session) return null;
   const data = await readStore();

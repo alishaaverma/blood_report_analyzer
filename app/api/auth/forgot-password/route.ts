@@ -1,35 +1,44 @@
-import { createHash, randomInt, randomUUID } from "node:crypto";
-import { formRedirect, textField } from "@/lib/http";
-import { sendResetCode } from "@/lib/mail";
-import { updateStore } from "@/lib/store";
+import { NextResponse } from "next/server";
+import { formRedirect, inputField, readRequestInput } from "@/lib/http";
+import { requestPasswordReset, ResetEmailError } from "@/lib/password-reset";
+import { isValidEmail } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
+const successMessage =
+  "If an account exists for that email, a verification code has been sent.";
+
 export async function POST(request: Request) {
-  const form = await request.formData();
-  const email = textField(form, "email").toLowerCase();
-  if (!email.includes("@")) return formRedirect(request, "/forgot-password", { error: "Enter a valid email address." });
-  const code = String(randomInt(100000, 1000000));
-  const requestId = randomUUID();
-  const outcome = await updateStore((data) => {
-    const user = data.users.find((item) => item.email.toLowerCase() === email);
-    if (!user) return null;
-    const recent = data.passwordResets.find((item) => item.userId === user.id && Date.now() - new Date(item.createdAt).getTime() < 60_000);
-    if (recent) return { rateLimited: true as const };
-    data.passwordResets = data.passwordResets.filter((item) => item.userId !== user.id);
-    data.passwordResets.push({
-      id: requestId, userId: user.id, codeDigest: createHash("sha256").update(code).digest("hex"),
-      expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(), verifiedAt: null,
-      failedAttempts: 0, createdAt: new Date().toISOString(),
-    });
-    return { rateLimited: false as const, email: user.email };
-  });
-  if (outcome?.rateLimited) return formRedirect(request, "/forgot-password", { error: "Please wait one minute before requesting another code." });
-  if (!outcome) return formRedirect(request, "/verify-otp", { request: requestId });
+  const input = await readRequestInput(request);
+  const email = inputField(input, "email").toLowerCase();
+  if (!isValidEmail(email)) {
+    const error = "Enter a valid email address.";
+    return input.format === "json"
+      ? NextResponse.json({ ok: false, error }, { status: 400 })
+      : formRedirect(request, "/forgot-password", { error });
+  }
+
   try {
-    const mode = await sendResetCode(outcome.email, code);
-    return formRedirect(request, "/verify-otp", { request: requestId, ...(mode === "development" ? { development: "1" } : {}) });
-  } catch {
-    return formRedirect(request, "/forgot-password", { error: "The verification email could not be sent. Check email settings and try again." });
+    const result = await requestPasswordReset(email);
+    if (input.format === "json") {
+      return NextResponse.json({
+        ok: true,
+        message: successMessage,
+        requestId: result.requestId,
+        expiresInSeconds: result.expiresInSeconds,
+        developmentMode: result.deliveryMode === "development",
+      });
+    }
+    return formRedirect(request, "/verify-otp", {
+      request: result.requestId,
+      ...(result.deliveryMode === "development" ? { development: "1" } : {}),
+    });
+  } catch (error) {
+    if (!(error instanceof ResetEmailError)) throw error;
+    const message =
+      "The verification email could not be sent. Check email settings and try again.";
+    return input.format === "json"
+      ? NextResponse.json({ ok: false, error: message }, { status: 502 })
+      : formRedirect(request, "/forgot-password", { error: message });
   }
 }

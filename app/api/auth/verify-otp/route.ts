@@ -1,25 +1,53 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-import { formRedirect, textField } from "@/lib/http";
-import { updateStore } from "@/lib/store";
+import { NextResponse } from "next/server";
+import { AUTH } from "@/lib/constants";
+import { formRedirect, inputField, readRequestInput } from "@/lib/http";
+import { verifyPasswordResetCode } from "@/lib/password-reset";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const form = await request.formData();
-  const requestId = textField(form, "requestId");
-  const code = textField(form, "code");
-  if (!/^\d{6}$/.test(code)) return formRedirect(request, "/verify-otp", { request: requestId, error: "Enter a valid six-digit code." });
-  const verified = await updateStore((data) => {
-    const reset = data.passwordResets.find((item) => item.id === requestId);
-    if (!reset || reset.failedAttempts >= 5 || new Date(reset.expiresAt).getTime() <= Date.now()) return false;
-    const actual = Buffer.from(createHash("sha256").update(code).digest("hex"));
-    const expected = Buffer.from(reset.codeDigest);
-    if (actual.length === expected.length && timingSafeEqual(actual, expected)) {
-      reset.verifiedAt = new Date().toISOString();
-      return true;
-    }
-    reset.failedAttempts += 1;
-    return false;
+  const input = await readRequestInput(request);
+  const requestId = inputField(input, "requestId");
+  const code = inputField(input, "code");
+  if (!new RegExp(`^\\d{${AUTH.resetCodeLength}}$`).test(code)) {
+    const error = `Enter a valid ${AUTH.resetCodeLength}-digit code.`;
+    return input.format === "json"
+      ? NextResponse.json({ ok: false, error }, { status: 400 })
+      : formRedirect(request, "/verify-otp", {
+          request: requestId,
+          error,
+        });
+  }
+
+  const resetToken = await verifyPasswordResetCode(requestId, code);
+  if (!resetToken) {
+    const error = "Incorrect, expired, or unavailable code.";
+    return input.format === "json"
+      ? NextResponse.json({ ok: false, error }, { status: 400 })
+      : formRedirect(request, "/verify-otp", {
+          request: requestId,
+          error,
+        });
+  }
+
+  if (input.format === "json") {
+    return NextResponse.json({
+      ok: true,
+      message: "Code verified.",
+      requestId,
+      resetToken,
+    });
+  }
+
+  const response = formRedirect(request, "/reset-password", {
+    request: requestId,
   });
-  return verified
-    ? formRedirect(request, "/reset-password", { request: requestId })
-    : formRedirect(request, "/verify-otp", { request: requestId, error: "Incorrect, expired, or unavailable code." });
+  response.cookies.set(AUTH.resetCookieName, resetToken, {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production",
+    path: "/api/auth/reset-password",
+    maxAge: Math.floor(AUTH.resetExpiryMs / 1000),
+  });
+  return response;
 }

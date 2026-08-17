@@ -1,41 +1,46 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readFileStore, writeFileStore } from "@/lib/file-store";
 import type { DataStore } from "@/lib/types";
 
-const storageDirectory = path.join(process.cwd(), "storage");
-const storePath = path.join(storageDirectory, "data.json");
-const emptyStore: DataStore = { users: [], reports: [], passwordResets: [] };
+type StoreBackend = "file" | "google-sheets";
+
 let updateQueue: Promise<unknown> = Promise.resolve();
 
-async function ensureStore() {
-  await mkdir(storageDirectory, { recursive: true });
-  try {
-    await readFile(storePath, "utf8");
-  } catch {
-    await writeFile(storePath, JSON.stringify(emptyStore, null, 2), "utf8");
+function configuredBackend(): StoreBackend {
+  const value = (process.env.DATA_STORE_BACKEND || "file").trim().toLowerCase();
+  if (value === "file" || value === "google-sheets") return value;
+  throw new Error(
+    `Unsupported DATA_STORE_BACKEND "${value}". Use "file" or "google-sheets".`,
+  );
+}
+
+async function readFromBackend(): Promise<DataStore> {
+  if (configuredBackend() === "google-sheets") {
+    const { readGoogleSheetsStore } = await import("@/lib/google-sheets-store");
+    return readGoogleSheetsStore();
   }
+  return readFileStore();
+}
+
+async function writeToBackend(data: DataStore): Promise<void> {
+  if (configuredBackend() === "google-sheets") {
+    const { writeGoogleSheetsStore } = await import("@/lib/google-sheets-store");
+    await writeGoogleSheetsStore(data);
+    return;
+  }
+  await writeFileStore(data);
 }
 
 export async function readStore(): Promise<DataStore> {
-  await ensureStore();
-  return JSON.parse(await readFile(storePath, "utf8")) as DataStore;
+  return readFromBackend();
 }
 
 export function updateStore<T>(mutator: (data: DataStore) => T | Promise<T>): Promise<T> {
   const operation = updateQueue.then(async () => {
-    const data = await readStore();
+    const data = await readFromBackend();
     const result = await mutator(data);
-    const temporaryPath = `${storePath}.${process.pid}.tmp`;
-    await writeFile(temporaryPath, JSON.stringify(data, null, 2), "utf8");
-    await rename(temporaryPath, storePath);
+    await writeToBackend(data);
     return result;
   });
   updateQueue = operation.catch(() => undefined);
   return operation;
-}
-
-export function publicUser<T extends { passwordHash: string }>(user: T): Omit<T, "passwordHash"> {
-  const { passwordHash: _passwordHash, ...safeUser } = user;
-  void _passwordHash;
-  return safeUser;
 }
